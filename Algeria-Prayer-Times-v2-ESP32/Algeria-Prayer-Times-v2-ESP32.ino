@@ -1,7 +1,6 @@
-//working ntp, fixed without ntp lib, improve time at boot
-//to do: improve http server (index html is inspired from ESP32-CAM example. )
-// scrollup ok, and scroll right ok for no long text, font ok, .
-//to do: add count down salat
+// scrollup ok, and scroll right ok for short text, font ok, .
+//to do: improve http server (index html is inspired from ESP32-CAM example. ) ,
+//to do: add hadith db
 
   
 // CONNECTIONS:
@@ -109,8 +108,8 @@ const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 3600; //+1GMT
 const int8_t   daylightOffset_sec = 0; 
 
-const char* ssid = "........";  
-const char* password = ".......";
+const char* ssid = "m";  
+const char* password = "12345678+";
 
 //// Set your Static IP address
 //IPAddress local_IP(192, 168, 43, 77);
@@ -123,6 +122,7 @@ char HijriDate[13],GeoDate[13],Fajr[6],Shurooq[6], Dhuhr[6], Asr[6], Maghrib[6],
 unsigned int sqliteHijri; //to calcule H_year,H_month,H_day, 14420707 to 1442 07 07
 uint16_t H_year ;
 uint8_t H_month,H_day ;// hidjri date 
+uint8_t G_Day ; // to reboot if this changed
 int16_t nextSalatMinutes,FajrMinutes,ShurooqMinutes,DhuhrMinutes,AsrMinutes,MaghribMinutes,IshaMinutes ;
 
 // store config in EEPROM.
@@ -230,12 +230,14 @@ void Status(AsyncWebServerRequest *request){
 void  getClockIndex(AsyncWebServerRequest *request){
 AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", index_html_gz, index_html_gz_len);
 response->addHeader("Content-Encoding", "gzip");
+response->addHeader("Access-Control-Max-Age", "5");
+
 request->send(response);
 }
 
 
 void uptimer(AsyncWebServerRequest *request){
-    static char json_response[128];
+    static char json_response[200];
     int sec = millis() / 1000;
     int min = sec / 60;
     int hr = min / 60;
@@ -532,13 +534,15 @@ const char *tail;
     //sprintf(ntp_time_as_str, "%d", rtc_time_as_int);
     //rtc_time_as_int=(now.tm_year+1900)*10000+(now.tm_mon+1)*100+now.tm_mday ;
 
-    char dateForSQL[11];
+   char dateForSQL[11];
     snprintf_P(dateForSQL,countof(dateForSQL),
             PSTR("%04u%02u%02u"),now.Year(),now.Month(),now.Day());
             //String asString(dateForSQL)
     snprintf_P(GeoDate,countof(GeoDate),
             PSTR("%04u-%02u-%02u"),now.Year(),now.Month(),now.Day());  // only for print in uptime func
-            
+  
+  G_Day= now.Day() ; // save this day to reboot if now.Day() get changed
+  
   String sql = "SELECT GeoDate,Fajr,Shurooq, Dhuhr, Asr, Maghrib,Isha FROM mawakit_midnight WHERE MADINA_ID = ";
   sql += city_id;
   sql += " AND GeoDate = ";
@@ -658,10 +662,6 @@ sqlite3_finalize(res);
 } 
 
 
-//unsigned long startMillis;  //some global variables available anywhere in the program
-//unsigned long currentMillis;
-//const unsigned long period = 1000;  //the value is a number of milliseconds
-
 
 short dv=1;
 short wait=50;
@@ -696,8 +696,11 @@ void Printscrollup(const char* salat_name,char* times){
 }
 
 
+unsigned long startMillis;  //some global variables available anywhere in the program
+unsigned long check_wifi = 30000;
+
 void loop() {
-//startMillis = millis();
+startMillis = millis();
 //vga.clear(0) ;
     
     now = Rtc.GetDateTime();
@@ -865,9 +868,23 @@ switch (salat2show){
      // default statements
 }
 
+  // if wifi is down, try reconnecting every 30 seconds
+  if (millis() > check_wifi) {
+    if (WiFi.status() != WL_CONNECTED){
+    Serial.println("Reconnecting to WiFi...");
+    WiFi.disconnect();
+    WiFi.begin(ssid, password);
+    check_wifi = millis() + 30000;
+  }
+  }
+  
+
+if (G_Day!=now.Day()) ESP.restart(); //reboot every new day
 
 
-vga.show();                // make everything visible
-//delay(10);
+vga.show();     // make everything visible
 AsyncElegantOTA.loop();
+
+Serial.print("time for 1 loop:") ;  
+Serial.println(millis() - startMillis) ; //60
 }
