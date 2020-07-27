@@ -80,18 +80,15 @@ int left_offset_hadith=500;     // offset to draw
 String s; // to save reshaped utf8 hadith from sql
 
 //warning use this website:http://www.arabic-keyboard.org/photoshop-arabic/
-const char Fajr_name[25]= " ﺮﺠﻔﻟﺍ"; // this is formated utf8 !
-const char Shurooq_name[25]= " ﻕﻭﺮﺸﻟﺍ" ;
-const char Dhuhr_name[25]= " ﺮﻬﻈﻟﺍ" ;
-const char Asr_name[25]= " ﺮﺼﻌﻟﺍ" ;
-const char Maghrib_name[25]= " ﺏﺮﻐﻤﻟﺍ" ;
-const char Isha_name[25]= " ﺀﺎﺸﻌﻟﺍ" ;
-static const char* const HijriMonthNames[]={"الشهر0","ﻡﺮﺤﻣ","ﺮﻔﺻ" ,"ﻝﻭﻷﺍ ﻊﻴﺑﺭ" ,"ﻲﻧﺎﺜﻟﺍ ﻊﻴﺑﺭ","ﻝﻭﻷﺍ ﻯﺩﺎﻤﺟ","ﻲﻧﺎﺜﻟﺍ ﻯﺩﺎﻤﺟ","ﺐﺟﺭ","ﻥﺎﺒﻌﺷ","ﻥﺎﻀﻣﺭ","ﻝﺍﻮﺷ","ﺓﺪﻌﻘﻟﺍﻭﺫ","ﺔﺠﺤﻟﺍ ﻭﺫ" } ;
-static const char* const GeoMonthNames[]={"الشهر0","ﻲﻔﻧﺎﺟ","ﻱﺮﻔﻴﻓ","ﺱﺭﺎﻣ","ﻞﻳﺮﻓﺃ","ﻱﺎﻣ","ﻥﺍﻮﺟ","ﺔﻴﻠﻳﻮﺟ","ﺕﻭﺃ","ﺮﺒﻤﺘﺒﺳ","ﺮﺑﻮﺘﻛﺃ","ﺮﺒﻤﻓﻮﻧ","ﺮﺒﻤﺴﻳﺩ"} ;
-static const char* const dayNames[]={"ﺖﺒﺴﻟﺍ","ﺪﺣﻷﺍ","ﻦﻴﻨﺛﻹﺍ","ﺀﺎﺛﻼﺜﻟﺍ","ﺀﺎﻌﺑﺭﻷﺍ","ﺲﻴﻤﺨﻟﺍ","ﺔﻌﻤﺠﻟﺍ"} ;
+static const char* const salat_name_tab[6]={" ﺮﺠﻔﻟﺍ"," ﻕﻭﺮﺸﻟﺍ"," ﺮﻬﻈﻟﺍ" , " ﺮﺼﻌﻟﺍ" ," ﺏﺮﻐﻤﻟﺍ" ," ﺀﺎﺸﻌﻟﺍ" } ;
+char** salat_times_list ; //for printing2vga (04:15)
 
-uint8_t salat2show=1 ; // show fajr first
-int16_t  salat_top_offset[7]={200, 200, 200,200,200,200,200}; //outside of screen
+static const char* const HijriMonthNames[13]={"الشهر0","ﻡﺮﺤﻣ","ﺮﻔﺻ" ,"ﻝﻭﻷﺍ ﻊﻴﺑﺭ" ,"ﻲﻧﺎﺜﻟﺍ ﻊﻴﺑﺭ","ﻝﻭﻷﺍ ﻯﺩﺎﻤﺟ","ﻲﻧﺎﺜﻟﺍ ﻯﺩﺎﻤﺟ","ﺐﺟﺭ","ﻥﺎﺒﻌﺷ","ﻥﺎﻀﻣﺭ","ﻝﺍﻮﺷ","ﺓﺪﻌﻘﻟﺍﻭﺫ","ﺔﺠﺤﻟﺍ ﻭﺫ" } ;
+static const char* const GeoMonthNames[13]={"الشهر0","ﻲﻔﻧﺎﺟ","ﻱﺮﻔﻴﻓ","ﺱﺭﺎﻣ","ﻞﻳﺮﻓﺃ","ﻱﺎﻣ","ﻥﺍﻮﺟ","ﺔﻴﻠﻳﻮﺟ","ﺕﻭﺃ","ﺮﺒﻤﺘﺒﺳ","ﺮﺑﻮﺘﻛﺃ","ﺮﺒﻤﻓﻮﻧ","ﺮﺒﻤﺴﻳﺩ"} ;
+static const char* const dayNames[7]={"ﺖﺒﺴﻟﺍ","ﺪﺣﻷﺍ","ﻦﻴﻨﺛﻹﺍ","ﺀﺎﺛﻼﺜﻟﺍ","ﺀﺎﻌﺑﺭﻷﺍ","ﺲﻴﻤﺨﻟﺍ","ﺔﻌﻤﺠﻟﺍ"} ;
+
+uint8_t salat2show=0 ; // show fajr first
+int16_t  salat_top_offset[6]={LCDHeight, LCDHeight, LCDHeight,LCDHeight,LCDHeight,LCDHeight}; //outside of screen
   
 //VGA Device
 #define  bluePin 32
@@ -117,8 +114,8 @@ const char* password = "12345678+";
 //IPAddress gateway(192, 168, 43, 1);
 //IPAddress subnet(255, 255, 255, 0);
 
-//vars to save sql request
-char HijriDate[13],GeoDate[13],Fajr[6],Shurooq[6], Dhuhr[6], Asr[6], Maghrib[6],Isha[6]; //for printing2vga
+//vars to save the sql request
+char HijriDate[13],GeoDate[13]; 
 unsigned int sqliteHijri; //to calcule H_year,H_month,H_day, 14420707 to 1442 07 07
 uint16_t H_year ;
 uint8_t H_month,H_day ;// hidjri date 
@@ -366,16 +363,32 @@ vga.print(ip); //  for ip address
 
 }
 
-void Adan()
+void Adan(short i)
 {
 Serial.print("Adan time: ");
+    if (Auto_fan) {
+         digitalWrite(RELAY,HIGH) ;
+         Serial.println("Fans turned on!");
+    } 
 //Todo other cmd..
-        if (Auto_fan) {
-             digitalWrite(RELAY,HIGH) ;
-             Serial.println("Fans turned on!");
-        } 
+
+   unsigned long iqama_start_Millis=millis(); 
+   char tmpp[]= "ﻥﺍﺫﺃ ﺖﻗﻭ ﻥﺎﺣ" ;
+   u8g2_for_adafruit_gfx.setFont(ae_Dimnah36);
+   u8g2_for_adafruit_gfx.setBackgroundColor(WHITE);
+   u8g2_for_adafruit_gfx.setForegroundColor(BLACK);   
+       
+while (millis() - iqama_start_Millis <60*1000){   
+     //vga.fillRect(0,0,LCDWidth, LCDHeight,vga.RGB(255,255,255)); //WHITE
+     vga.clear(WHITE) ;
+     delay(1000);
+     u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_CENTER(tmpp),50,tmpp);
+     u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(salat_name_tab[i])-10,salat_top_offset[i],salat_name_tab[i]);
+     vga.show() ;
+     delay(1000);
 }
 
+}
 
 void setup(){
   Serial.begin(115200);
@@ -543,7 +556,7 @@ const char *tail;
   
   G_Day= now.Day() ; // save this day to reboot if now.Day() get changed
   
-  String sql = "SELECT GeoDate,Fajr,Shurooq, Dhuhr, Asr, Maghrib,Isha FROM mawakit_midnight WHERE MADINA_ID = ";
+  String sql = "SELECT Fajr,Shurooq, Dhuhr, Asr, Maghrib,Isha FROM mawakit_midnight WHERE MADINA_ID = ";
   sql += city_id;
   sql += " AND GeoDate = ";
   //sql += "20200714";
@@ -558,39 +571,51 @@ const char *tail;
     return;
   }
 
+
+    // make salat_times_list[X]
+    salat_times_list = (char **)malloc(6 * sizeof(char *));
+    // make salat_times_list[X][X]
+    for(size_t i = 0; i < 6; i++)
+    {
+        salat_times_list[i] = (char *)malloc(6 * sizeof(char));
+    }
+
   Serial.println("salat times for today:");
   String resp = "";
   while (sqlite3_step(res) == SQLITE_ROW) {
-    FajrMinutes = sqlite3_column_int(res, 1)+Fajr_shift ;
-    snprintf(Fajr,6, "%02d:%02d", FajrMinutes / 60, FajrMinutes % 60);
-    
-    ShurooqMinutes = sqlite3_column_int(res, 2) + Shurooq_shift ;
-    snprintf(Shurooq,6, "%02d:%02d", ShurooqMinutes / 60, ShurooqMinutes % 60);
-    
-    DhuhrMinutes = sqlite3_column_int(res, 3) + Dhuhr_shift;
-    snprintf(Dhuhr,6, "%02d:%02d", DhuhrMinutes / 60, DhuhrMinutes % 60);
-    
-    AsrMinutes = sqlite3_column_int(res, 4) + Asr_shift ;
-    snprintf(Asr,6, "%02d:%02d", AsrMinutes / 60, AsrMinutes % 60);
-    
-    MaghribMinutes = sqlite3_column_int(res, 5) + Maghrib_shift;
-    snprintf(Maghrib,6, "%02d:%02d", MaghribMinutes / 60, MaghribMinutes % 60);
-    
-    IshaMinutes = sqlite3_column_int(res, 6) + Isha_shift;
-    snprintf(Isha,6, "%02d:%02d", IshaMinutes / 60, IshaMinutes % 60);    
     resp = "";
-    resp += sqlite3_column_int(res, 1); //Fajr
+    resp += sqlite3_column_int(res, 0); //Fajr
     resp += " ";
-    resp += sqlite3_column_int(res, 2); //Shurooq
+    resp += sqlite3_column_int(res, 1); //Shurooq
     resp += " ";
-    resp += sqlite3_column_int(res, 3); //Dhuhr
+    resp += sqlite3_column_int(res, 2); //Dhuhr
     resp += " ";
-    resp += sqlite3_column_int(res, 4); //Asr
+    resp += sqlite3_column_int(res, 3); //Asr
     resp += " ";
-    resp += sqlite3_column_int(res, 5); //Maghrib
+    resp += sqlite3_column_int(res, 4); //Maghrib
     resp += " ";
-    resp += sqlite3_column_int(res, 6);//Isha
+    resp += sqlite3_column_int(res, 5);//Isha
     Serial.println(resp);
+    
+    FajrMinutes = sqlite3_column_int(res, 0)+ Fajr_shift ;
+    snprintf(salat_times_list[0],6, "%02d:%02d", FajrMinutes / 60, FajrMinutes % 60);
+    
+    ShurooqMinutes = sqlite3_column_int(res, 1) + Shurooq_shift ;
+    snprintf(salat_times_list[1],6, "%02d:%02d", ShurooqMinutes / 60, ShurooqMinutes % 60);
+    
+    DhuhrMinutes = sqlite3_column_int(res, 2) + Dhuhr_shift;
+    snprintf(salat_times_list[2],6, "%02d:%02d", DhuhrMinutes / 60, DhuhrMinutes % 60);
+    
+    AsrMinutes = sqlite3_column_int(res, 3) + Asr_shift ;
+    snprintf(salat_times_list[3],6, "%02d:%02d", AsrMinutes / 60, AsrMinutes % 60);
+    
+    MaghribMinutes = sqlite3_column_int(res, 4) + Maghrib_shift;
+    snprintf(salat_times_list[4],6, "%02d:%02d", MaghribMinutes / 60, MaghribMinutes % 60);
+    
+    IshaMinutes = sqlite3_column_int(res, 5) + Isha_shift;
+    snprintf(salat_times_list[5],6, "%02d:%02d", IshaMinutes / 60, IshaMinutes % 60);    
+
+    Serial.println("salat_times_list is saved !");
   }
 sqlite3_finalize(res);
 
@@ -665,7 +690,7 @@ sqlite3_finalize(res);
 
 short dv=1;
 short wait=50;
-void Printscrollup(const char* salat_name,char* times){
+void Printscrollup(const char* salat_name,const char* times){
      u8g2_for_adafruit_gfx.setFont(ae_Dimnah36);
      vga.fillRect(0,150,LCDWidth, 50,vga.RGB(0,0,0));
      u8g2_for_adafruit_gfx.setForegroundColor(WHITE);
@@ -689,7 +714,7 @@ void Printscrollup(const char* salat_name,char* times){
   if(salat_top_offset[salat2show]>250 ) { //outside of screen
     dv=2 ;
     salat_top_offset[salat2show]= 200 ; //fot the next show
-    if (salat2show==6) salat2show=1;  //if ishaa show fajr
+    if (salat2show==5) salat2show=0;  //if ishaa show fajr
     else salat2show=salat2show+1;
   }
 
@@ -718,13 +743,12 @@ void loop() {
     snprintf_P(TimeNoSec,countof(TimeNoSec),PSTR("%02u:%02u"),now.Hour(),now.Minute());
     if(now.Second()==0){
         Serial.print("now.Second()==0");
-        //test if salat time Fajr,Shurooq, Dhuhr, Asr, Maghrib,Isha;      
-        if(!strcmp(Fajr, TimeNoSec)) Adan();
-        else if(!strcmp(Shurooq, TimeNoSec)) Adan();
-        else if(!strcmp(Dhuhr,TimeNoSec)) Adan();
-        else if(!strcmp(Asr, TimeNoSec)) Adan();
-        else if(!strcmp(Maghrib, TimeNoSec)) Adan();
-        else if(!strcmp(Isha, TimeNoSec)) Adan();
+        if(!strcmp(salat_times_list[0], TimeNoSec)) Adan(0); //Fajr
+        //else if(!strcmp(salat_times_list[1], TimeNoSec)) Adan(1); //Shurooq
+        else if(!strcmp(salat_times_list[2],TimeNoSec)) Adan(2); //Dhuhr
+        else if(!strcmp(salat_times_list[3], TimeNoSec)) Adan(3); //Asr
+        else if(!strcmp(salat_times_list[4], TimeNoSec)) Adan(4); //Maghrib
+        else if(!strcmp(salat_times_list[5], TimeNoSec)) Adan(5); //Isha
         
         if (now.DayOfWeek() == 6 ) {
           // todo: Djomoaa addons
@@ -750,31 +774,39 @@ printClock(); //clock 09:00:00
 char nextSalat[9];  // "00:00:00" 
 int16_t nowMinutes=now.Hour()*60+now.Minute() ; 
 
-if ((FajrMinutes - nowMinutes) > 0) {
+if ((FajrMinutes - nowMinutes) >= 0) {
     nextSalatMinutes= FajrMinutes - nowMinutes ;
 }
-else if ((ShurooqMinutes - nowMinutes) > 0) {
+else if ((ShurooqMinutes - nowMinutes) >= 0) {
     nextSalatMinutes= ShurooqMinutes- nowMinutes ;
 }
-else if ((AsrMinutes - nowMinutes) > 0) {
+else if ((AsrMinutes - nowMinutes) >= 0) {
     nextSalatMinutes= AsrMinutes- nowMinutes ;
 }
-else if ((MaghribMinutes - nowMinutes) > 0) {
+else if ((MaghribMinutes - nowMinutes) >= 0) {
     nextSalatMinutes= MaghribMinutes- nowMinutes ;
 }
-else if ((IshaMinutes - nowMinutes) > 0) {
+else if ((IshaMinutes - nowMinutes) >= 0) {
     nextSalatMinutes= IshaMinutes- nowMinutes ;
 }
-else if ((IshaMinutes - nowMinutes) <= 0) {
-    nextSalatMinutes= nowMinutes-FajrMinutes ;
+else if ((IshaMinutes - nowMinutes) < 0) {
+    nextSalatMinutes= (24*60-nowMinutes) + FajrMinutes ;
 }
 
-if ((nextSalatMinutes / 60) > 0)  // 02:05:17
-    snprintf(nextSalat,9, "%02d:%02d:%02d", nextSalatMinutes / 60, nextSalatMinutes % 60 -1 ,60-now.Second());  
-else                              //    30:44
-    snprintf(nextSalat,9, "%02d:%02d", nextSalatMinutes % 60 +1 ,59-now.Second());  
+if (now.Second()==0){
+    if ((nextSalatMinutes / 60) > 0)  // 65-->01:05:00
+        snprintf(nextSalat,9, "%02d:%02d:00", nextSalatMinutes / 60, nextSalatMinutes % 60);  
+    else                              //    30:44
+        snprintf(nextSalat,9, "%02d:00", nextSalatMinutes % 60);  
+}
+else{ //!0
+      if ((nextSalatMinutes / 60) > 0)  // 02:05:17
+      snprintf(nextSalat,9, "%02d:%02d:%02d", nextSalatMinutes / 60, nextSalatMinutes % 60 -1 ,60-now.Second());  
+      else                              //    30:44
+      snprintf(nextSalat,9, "%02d:%02d", nextSalatMinutes % 60 -1 ,60-now.Second());  
+}
 
-u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(nextSalat),40,nextSalat);
+u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(nextSalat)-5,40,nextSalat);
 
 
 
@@ -783,7 +815,7 @@ u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(nextSalat),40,nextSalat);
   if(left_offset_hadith<LCDWidth )
   {
     gfx.fillRect(0, 49,LCDWidth, 50, GREEN);
-    u8g2_for_adafruit_gfx.setForegroundColor(WHITE);   
+    u8g2_for_adafruit_gfx.setForegroundColor(BLACK);   
     u8g2_for_adafruit_gfx.drawUTF8(left_offset_hadith,80,s.c_str());
     left_offset_hadith += SCROLL_DELTA;  
   }
@@ -844,28 +876,9 @@ else {
 }
 
 //////////////////////   print salat times
-switch (salat2show){
-   case 1:
-    Printscrollup(Fajr_name,Fajr);
-     break;
-   case 2:
-     Printscrollup(Shurooq_name,Shurooq);  
-     break;    
-   case 3:
-     Printscrollup(Dhuhr_name,Dhuhr);  
-     break;    
-   case 4:
-     Printscrollup(Asr_name,Asr);  
-     break;    
-   case 5:
-     Printscrollup(Maghrib_name,Maghrib);  
-     break;    
-   case 6:
-     Printscrollup(Isha_name,Isha);  
-   break;    
-   //default:
-     // default statements
-}
+
+  Printscrollup(salat_name_tab[salat2show],salat_times_list[salat2show]);
+
 
   // if wifi is down, try reconnecting every 30 seconds
   if (millis() > check_wifi) {
