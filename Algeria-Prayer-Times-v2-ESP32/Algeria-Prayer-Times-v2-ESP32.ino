@@ -700,8 +700,7 @@ unsigned long startMillis;  //some global variables available anywhere in the pr
 unsigned long check_wifi = 30000;
 
 void loop() {
-startMillis = millis();
-//vga.clear(0) ;
+//startMillis = millis();
     
     now = Rtc.GetDateTime();
     if (!now.IsValid())
@@ -751,31 +750,31 @@ printClock(); //clock 09:00:00
 char nextSalat[9];  // "00:00:00" 
 int16_t nowMinutes=now.Hour()*60+now.Minute() ; 
 
-if ((FajrMinutes - nowMinutes) >= 0) {
+if ((FajrMinutes - nowMinutes) > 0) {
     nextSalatMinutes= FajrMinutes - nowMinutes ;
 }
-else if ((ShurooqMinutes - nowMinutes) >= 0) {
+else if ((ShurooqMinutes - nowMinutes) > 0) {
     nextSalatMinutes= ShurooqMinutes- nowMinutes ;
 }
-else if ((AsrMinutes - nowMinutes) >= 0) {
+else if ((AsrMinutes - nowMinutes) > 0) {
     nextSalatMinutes= AsrMinutes- nowMinutes ;
 }
-else if ((MaghribMinutes - nowMinutes) >= 0) {
+else if ((MaghribMinutes - nowMinutes) > 0) {
     nextSalatMinutes= MaghribMinutes- nowMinutes ;
 }
-else if ((IshaMinutes - nowMinutes) >= 0) {
+else if ((IshaMinutes - nowMinutes) > 0) {
     nextSalatMinutes= IshaMinutes- nowMinutes ;
 }
-else if ((IshaMinutes - nowMinutes) < 0) {
+else if ((IshaMinutes - nowMinutes) <= 0) {
     nextSalatMinutes= nowMinutes-FajrMinutes ;
 }
 
-if ((nextSalatMinutes / 60) > 0) 
-    snprintf(nextSalat,9, "%02d:%02d:%02d", nextSalatMinutes / 60, nextSalatMinutes % 60 +1 ,59-now.Second());  
-else   
+if ((nextSalatMinutes / 60) > 0)  // 02:05:17
+    snprintf(nextSalat,9, "%02d:%02d:%02d", nextSalatMinutes / 60, nextSalatMinutes % 60 -1 ,60-now.Second());  
+else                              //    30:44
     snprintf(nextSalat,9, "%02d:%02d", nextSalatMinutes % 60 +1 ,59-now.Second());  
 
-u8g2_for_adafruit_gfx.drawUTF8(160,40,nextSalat);
+u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(nextSalat),40,nextSalat);
 
 
 
@@ -885,6 +884,6 @@ if (G_Day!=now.Day()) ESP.restart(); //reboot every new day
 vga.show();     // make everything visible
 AsyncElegantOTA.loop();
 
-Serial.print("time for 1 loop:") ;  
-Serial.println(millis() - startMillis) ; //60
+//Serial.print("time for 1 loop:") ;  
+//Serial.println(millis() - startMillis) ; //60
 }
