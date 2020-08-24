@@ -1,7 +1,7 @@
 // scrollup ok, and scroll right ok for short text, font ok, .
 //to do: improve http server (index html is inspired from ESP32-CAM example. ) ,
 //to do: add hadith db
-
+#define RELAY 19
   
 // CONNECTIONS:
 // DS1302 CLK/SCLK --> 5 
@@ -42,12 +42,11 @@
 #include <Hash.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
-#include <AsyncElegantOTA.h>
 #include "index.h" //html page
 #include <EEPROM.h> // to save city id and salat time shift config.
 
 //for write in arabic
-#include "prReshaper.h"
+//#include "prReshaper.h"
 #include <U8g2_for_Adafruit_GFX.h>
 #include "fonts.c"
 
@@ -75,9 +74,8 @@ U8G2_FOR_ADAFRUIT_GFX u8g2_for_adafruit_gfx;
 //for scrollRight
 #define SCROLL_DELTA 2
 #define SCROLL_DELAY 0
-char Hadith[]= "قال رسول الله صلى الله عليه وسلم خير الأعمال أدومها وإن قل" ;
-int left_offset_hadith=500;     // offset to draw
-String s; // to save reshaped utf8 hadith from sql
+
+String Hadith_string="" ;
 
 //warning use this website:http://www.arabic-keyboard.org/photoshop-arabic/
 static const char* const salat_name_tab[6]={" ﺮﺠﻔﻟﺍ"," ﻕﻭﺮﺸﻟﺍ"," ﺮﻬﻈﻟﺍ" , " ﺮﺼﻌﻟﺍ" ," ﺏﺮﻐﻤﻟﺍ" ," ﺀﺎﺸﻌﻟﺍ" } ;
@@ -85,7 +83,7 @@ char** salat_times_list ; //for printing2vga (04:15)
 
 static const char* const HijriMonthNames[13]={"الشهر0","ﻡﺮﺤﻣ","ﺮﻔﺻ" ,"ﻝﻭﻷﺍ ﻊﻴﺑﺭ" ,"ﻲﻧﺎﺜﻟﺍ ﻊﻴﺑﺭ","ﻝﻭﻷﺍ ﻯﺩﺎﻤﺟ","ﻲﻧﺎﺜﻟﺍ ﻯﺩﺎﻤﺟ","ﺐﺟﺭ","ﻥﺎﺒﻌﺷ","ﻥﺎﻀﻣﺭ","ﻝﺍﻮﺷ","ﺓﺪﻌﻘﻟﺍﻭﺫ","ﺔﺠﺤﻟﺍ ﻭﺫ" } ;
 static const char* const GeoMonthNames[13]={"الشهر0","ﻲﻔﻧﺎﺟ","ﻱﺮﻔﻴﻓ","ﺱﺭﺎﻣ","ﻞﻳﺮﻓﺃ","ﻱﺎﻣ","ﻥﺍﻮﺟ","ﺔﻴﻠﻳﻮﺟ","ﺕﻭﺃ","ﺮﺒﻤﺘﺒﺳ","ﺮﺑﻮﺘﻛﺃ","ﺮﺒﻤﻓﻮﻧ","ﺮﺒﻤﺴﻳﺩ"} ;
-static const char* const dayNames[7]={"ﺖﺒﺴﻟﺍ","ﺪﺣﻷﺍ","ﻦﻴﻨﺛﻹﺍ","ﺀﺎﺛﻼﺜﻟﺍ","ﺀﺎﻌﺑﺭﻷﺍ","ﺲﻴﻤﺨﻟﺍ","ﺔﻌﻤﺠﻟﺍ"} ;
+static const char* const dayNames[7]={"ﺪﺣﻷﺍ","ﻦﻴﻨﺛﻹﺍ","ﺀﺎﺛﻼﺜﻟﺍ","ﺀﺎﻌﺑﺭﻷﺍ","ﺲﻴﻤﺨﻟﺍ","ﺔﻌﻤﺠﻟﺍ","ﺖﺒﺴﻟﺍ"} ;
 
 uint8_t salat2show=0 ; // show fajr first
 int16_t  salat_top_offset[6]={LCDHeight, LCDHeight, LCDHeight,LCDHeight,LCDHeight,LCDHeight}; //outside of screen
@@ -349,10 +347,10 @@ void updateFromNTP(){
 
 void printClock()
 {
-
-gfx.fillRect(0, 0,320, 50, WHITE); //WHITE
-u8g2_for_adafruit_gfx.setForegroundColor(0); //black
-u8g2_for_adafruit_gfx.setBackgroundColor(WHITE);   
+u8g2_for_adafruit_gfx.setFont(watan); 
+gfx.fillRect(0, 0,LCDWidth, 50, BLACK); //WHITE
+u8g2_for_adafruit_gfx.setForegroundColor(WHITE); //black
+u8g2_for_adafruit_gfx.setBackgroundColor(BLACK);   
 u8g2_for_adafruit_gfx.drawUTF8(0,40,printTime(now).c_str()); //  for exp: 17:00
 
 vga.setCursor(0, 0);
@@ -375,17 +373,27 @@ Serial.print("Adan time: ");
    unsigned long iqama_start_Millis=millis(); 
    char tmpp[]= "ﻥﺍﺫﺃ ﺖﻗﻭ ﻥﺎﺣ" ;
    u8g2_for_adafruit_gfx.setFont(ae_Dimnah36);
-   u8g2_for_adafruit_gfx.setBackgroundColor(WHITE);
-   u8g2_for_adafruit_gfx.setForegroundColor(BLACK);   
-       
+   bool color=true;    
 while (millis() - iqama_start_Millis <60*1000){   
-     //vga.fillRect(0,0,LCDWidth, LCDHeight,vga.RGB(255,255,255)); //WHITE
+     if(color){
      vga.clear(WHITE) ;
-     delay(1000);
+     u8g2_for_adafruit_gfx.setFont(ae_Dimnah36);
+     u8g2_for_adafruit_gfx.setBackgroundColor(WHITE);
+     u8g2_for_adafruit_gfx.setForegroundColor(BLACK);  
+     }
+     else
+     {
+     vga.clear(BLACK) ;
+     u8g2_for_adafruit_gfx.setFont(ae_Dimnah36);
+     u8g2_for_adafruit_gfx.setBackgroundColor(BLACK);
+     u8g2_for_adafruit_gfx.setForegroundColor(WHITE);      
+     }
+     
      u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_CENTER(tmpp),50,tmpp);
-     u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(salat_name_tab[i])-10,salat_top_offset[i],salat_name_tab[i]);
+     u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_CENTER(salat_name_tab[i]),130,salat_name_tab[i]);
      vga.show() ;
-     delay(1000);
+     color=!color;
+     delay(5000);
 }
 
 }
@@ -393,6 +401,7 @@ while (millis() - iqama_start_Millis <60*1000){
 void setup(){
   Serial.begin(115200);
   EEPROM.begin(512);
+    
   Auto_fan = EEPROM.read(0);
   city_id = EEPROM.read(1);
   hijri_shift = EEPROM.read(2);
@@ -477,17 +486,14 @@ void setup(){
     server.on("/", HTTP_GET, getClockIndex);
    server.on("/restart", HTTP_GET, [](AsyncWebServerRequest *request){  ESP.restart();  });
 
-  AsyncElegantOTA.begin(&server);    // Start ElegantOTA
   server.begin();
-//  WiFi.disconnect(true);
-//  WiFi.mode(WIFI_OFF);
-//disconnect WiFi as it's no longer needed
+
   
 ////// end server
 
 
 //read sqliteDB
-sqlite3 *db1;
+sqlite3 *db1,*db2;
 int rc;
 sqlite3_stmt *res;
 const char *tail;
@@ -619,6 +625,7 @@ const char *tail;
   }
 sqlite3_finalize(res);
 
+
   Serial.print("FreeMem before get hijri date:") ;  
   Serial.println(ESP.getFreeHeap() ) ; 
   //FreeMem before get hijri date:190972
@@ -671,6 +678,33 @@ sqlite3_finalize(res);
   sqlite3_close(db1);
   //end sqlitedb read
 
+
+
+//Hadith_string
+   if (db_open("/spiffs/hadith.db", &db2))
+       return;
+  sql = "SELECT HADITH  FROM ahadith WHERE id=";
+  sql += 1;
+  Serial.println(sql);
+  rc = sqlite3_prepare_v2(db2, sql.c_str(), 1000, &res, &tail);
+  if (rc != SQLITE_OK) {
+    String resp = "Failed to fetch data: ";
+    resp += sqlite3_errmsg(db2);
+    Serial.println(resp.c_str());
+    return;
+  }
+
+  Serial.println("HADITH FOR today:");
+  resp = "";
+  while (sqlite3_step(res) == SQLITE_ROW) {
+    Hadith_string = "";
+    Hadith_string += (const char *) sqlite3_column_text(res, 0); //HADITH
+    Serial.println(Hadith_string);
+        
+  }
+  sqlite3_finalize(res);
+  sqlite3_close(db2);
+
   Serial.print("FreeMem before vga init:") ;  
   Serial.println(ESP.getFreeHeap() ) ; 
   //FreeMem before vga init: 231588
@@ -693,11 +727,15 @@ short wait=50;
 void Printscrollup(const char* salat_name,const char* times){
      u8g2_for_adafruit_gfx.setFont(ae_Dimnah36);
      vga.fillRect(0,150,LCDWidth, 50,vga.RGB(0,0,0));
-     u8g2_for_adafruit_gfx.setForegroundColor(WHITE);
-     u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(salat_name)-10,salat_top_offset[salat2show],salat_name);
+//     u8g2_for_adafruit_gfx.setBackgroundColor(GREEN);      
+//     u8g2_for_adafruit_gfx.setForegroundColor(BLACK);
+     u8g2_for_adafruit_gfx.setForegroundColor(GREEN);      
+     u8g2_for_adafruit_gfx.setBackgroundColor(BLACK);
+     u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(salat_name)-20,salat_top_offset[salat2show],salat_name);
 
-     u8g2_for_adafruit_gfx.setForegroundColor(RED);
-     u8g2_for_adafruit_gfx.drawUTF8(10,salat_top_offset[salat2show],times);
+     u8g2_for_adafruit_gfx.setFont(watan); 
+     //u8g2_for_adafruit_gfx.setForegroundColor(RED);
+     u8g2_for_adafruit_gfx.drawUTF8(20,salat_top_offset[salat2show]+5,times);
 
   if(salat_top_offset[salat2show]>185 ){ //يستمر في الصعود أو النزول حسب الحالة
      salat_top_offset[salat2show] -= dv;  
@@ -720,9 +758,87 @@ void Printscrollup(const char* salat_name,const char* times){
 
 }
 
-
+unsigned long hadith_update=0;  //some global variables available anywhere in the program
 unsigned long startMillis;  //some global variables available anywhere in the program
 unsigned long check_wifi = 30000;
+
+String hadith_tmp="";
+String hadith_test="";
+String hadith_tmp2="";
+String hadith_test2="";
+
+int hadith_tmp_len;
+int ii,hadith_pos=Hadith_string.length(),count = 0; 
+
+
+void printHadith() {
+  if(millis()>hadith_update){
+    hadith_update=millis()+5000;      
+    Serial.println(hadith_pos);
+    hadith_tmp="";
+    hadith_test="";
+    
+    for (ii = hadith_pos;  ii>=0;  ii--)
+    {
+        if (Hadith_string[ii] == ' ' || ii == 0){
+            count++; 
+            //snprintf(hadith_test,ii-hadith_pos,Hadith_string.substring(hadith_pos,ii).c_str());
+            hadith_test=Hadith_string.substring(ii,hadith_pos) + hadith_test ;
+            int hadith_test_len=u8g2_for_adafruit_gfx.getUTF8Width( hadith_test.c_str() ) ; 
+            if  (hadith_test_len<LCDWidth) {
+                //snprintf(hadith_tmp,ii-hadith_pos,Hadith_string.substring(hadith_pos,ii).c_str());
+                hadith_tmp=Hadith_string.substring(ii,hadith_pos) + hadith_tmp;
+                Serial.println(hadith_tmp);
+                hadith_pos=ii;
+              }  
+              else break ;                    
+        }
+    }
+  
+
+    if(ii <0) {
+      hadith_pos=Hadith_string.length() ;
+      hadith_tmp2="";
+    }
+    else{
+/////// second line
+    hadith_tmp2="";
+    hadith_test2="";
+    
+    for (ii = hadith_pos;  ii>=0;  ii--){
+        if (Hadith_string[ii] == ' ' || ii == 0){
+            count++; 
+            //snprintf(hadith_test,ii-hadith_pos,Hadith_string.substring(hadith_pos,ii).c_str());
+            hadith_test2=Hadith_string.substring(ii,hadith_pos) + hadith_test2 ;
+            int hadith_test_len=u8g2_for_adafruit_gfx.getUTF8Width( hadith_test2.c_str() ) ; 
+            if  (hadith_test_len<LCDWidth) {
+                //snprintf(hadith_tmp,ii-hadith_pos,Hadith_string.substring(hadith_pos,ii).c_str());
+                hadith_tmp2=Hadith_string.substring(ii,hadith_pos) + hadith_tmp2;
+                Serial.println(hadith_tmp2);
+                hadith_pos=ii;
+              }  
+              else break ;                    
+        }
+    }
+  
+    if(ii <0) {
+      hadith_pos=Hadith_string.length() ;
+    }
+    
+}
+
+}
+    
+    gfx.fillRect(0, 50,LCDWidth, 50, WHITE);
+    gfx.fillRect(0, 100,LCDWidth, 50, WHITE);
+    u8g2_for_adafruit_gfx.setBackgroundColor(WHITE);      
+    u8g2_for_adafruit_gfx.setForegroundColor(RED);   
+    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_CENTER(hadith_tmp.c_str()),80,hadith_tmp.c_str());   
+   
+//    u8g2_for_adafruit_gfx.setBackgroundColor(GREEN);      
+//    u8g2_for_adafruit_gfx.setForegroundColor(RED);       
+    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_CENTER(hadith_tmp2.c_str()),130,hadith_tmp2.c_str()); //second line
+}
 
 void loop() {
 //startMillis = millis();
@@ -736,9 +852,6 @@ void loop() {
         ESP.restart() ;
     }
 
-  //toDo: use numbers better than chars
-  //int TimeNoSec=now.Hour()*60+now.Minute() ; 
-  
     char TimeNoSec[6];
     snprintf_P(TimeNoSec,countof(TimeNoSec),PSTR("%02u:%02u"),now.Hour(),now.Minute());
     if(now.Second()==0){
@@ -765,114 +878,97 @@ void loop() {
 //  Serial.println(ESP.getFreeHeap() ) ;   //wifi disconnected: FreeMem=90152
 
 
-//u8g2_for_adafruit_gfx.setFontMode(1);                 // use u8g2 transparent mode (this is default)
-//u8g2_for_adafruit_gfx.setFont(ae_Dimnah24);
-
-u8g2_for_adafruit_gfx.setFont(watan); 
 printClock(); //clock 09:00:00
 
-char nextSalat[9];  // "00:00:00" 
-int16_t nowMinutes=now.Hour()*60+now.Minute() ; 
-
-if ((FajrMinutes - nowMinutes) >= 0) {
-    nextSalatMinutes= FajrMinutes - nowMinutes ;
-}
-else if ((ShurooqMinutes - nowMinutes) >= 0) {
-    nextSalatMinutes= ShurooqMinutes- nowMinutes ;
-}
-else if ((AsrMinutes - nowMinutes) >= 0) {
-    nextSalatMinutes= AsrMinutes- nowMinutes ;
-}
-else if ((MaghribMinutes - nowMinutes) >= 0) {
-    nextSalatMinutes= MaghribMinutes- nowMinutes ;
-}
-else if ((IshaMinutes - nowMinutes) >= 0) {
-    nextSalatMinutes= IshaMinutes- nowMinutes ;
-}
-else if ((IshaMinutes - nowMinutes) < 0) {
-    nextSalatMinutes= (24*60-nowMinutes) + FajrMinutes ;
-}
-
-if (now.Second()==0){
-    if ((nextSalatMinutes / 60) > 0)  // 65-->01:05:00
-        snprintf(nextSalat,9, "%02d:%02d:00", nextSalatMinutes / 60, nextSalatMinutes % 60);  
-    else                              //    30:44
-        snprintf(nextSalat,9, "%02d:00", nextSalatMinutes % 60);  
-}
-else{ //!0
-      if ((nextSalatMinutes / 60) > 0)  // 02:05:17
-      snprintf(nextSalat,9, "%02d:%02d:%02d", nextSalatMinutes / 60, nextSalatMinutes % 60 -1 ,60-now.Second());  
-      else                              //    30:44
-      snprintf(nextSalat,9, "%02d:%02d", nextSalatMinutes % 60 -1 ,60-now.Second());  
-}
-
-u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(nextSalat)-5,40,nextSalat);
-
+//char nextSalat[9];  // "00:00:00" 
+//int16_t nowMinutes=now.Hour()*60+now.Minute() ; 
+//
+//if ((FajrMinutes - nowMinutes) >= 0) {
+//    nextSalatMinutes= FajrMinutes - nowMinutes ;
+//}
+//else if ((ShurooqMinutes - nowMinutes) >= 0) {
+//    nextSalatMinutes= ShurooqMinutes- nowMinutes ;
+//}
+//else if ((AsrMinutes - nowMinutes) >= 0) {
+//    nextSalatMinutes= AsrMinutes- nowMinutes ;
+//}
+//else if ((MaghribMinutes - nowMinutes) >= 0) {
+//    nextSalatMinutes= MaghribMinutes- nowMinutes ;
+//}
+//else if ((IshaMinutes - nowMinutes) >= 0) {
+//    nextSalatMinutes= IshaMinutes- nowMinutes ;
+//}
+//else if ((IshaMinutes - nowMinutes) < 0) {
+//    nextSalatMinutes= (24*60-nowMinutes) + FajrMinutes ;
+//}
+//
+//if (now.Second()==0){
+//    if ((nextSalatMinutes / 60) > 0)  // 65-->01:05:00
+//        snprintf(nextSalat,9, "%02d:%02d:00", nextSalatMinutes / 60, nextSalatMinutes % 60);  
+//    else                              //    30:44
+//        snprintf(nextSalat,9, "%02d:00", nextSalatMinutes % 60);  
+//}
+//else{ //!0
+//      if ((nextSalatMinutes / 60) > 0)  // 02:05:17
+//      snprintf(nextSalat,9, "%02d:%02d:%02d", nextSalatMinutes / 60, nextSalatMinutes % 60 -1 ,60-now.Second());  
+//      else                              //    30:44
+//      snprintf(nextSalat,9, "%02d:%02d", nextSalatMinutes % 60 -1 ,60-now.Second());  
+//}
+//
+//u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(nextSalat)-5,40,nextSalat);
 
 
 /////////// print hadith
-  u8g2_for_adafruit_gfx.setBackgroundColor(GREEN);   
-  if(left_offset_hadith<LCDWidth )
-  {
-    gfx.fillRect(0, 49,LCDWidth, 50, GREEN);
-    u8g2_for_adafruit_gfx.setForegroundColor(BLACK);   
-    u8g2_for_adafruit_gfx.drawUTF8(left_offset_hadith,80,s.c_str());
-    left_offset_hadith += SCROLL_DELTA;  
-  }
-  else {
-    s = prReshaper123(Hadith); 
-    left_offset_hadith= - u8g2_for_adafruit_gfx.getUTF8Width(s.c_str()) ;
-  }
-
-
+printHadith();
 
 /////////////////////////////////////////////print date at bottom
-char tmp[11];
+char tmp[13];
 int16_t len;
-u8g2_for_adafruit_gfx.setFont(ae_Dimnah24);
+//u8g2_for_adafruit_gfx.setFont(ae_Dimnah24);
+u8g2_for_adafruit_gfx.setFont(watan20); 
 u8g2_for_adafruit_gfx.setBackgroundColor(BLACK);   
-gfx.fillRect(0, 100,LCDWidth, 50, 0);   
+//gfx.fillRect(0, 100,LCDWidth, 50, YELLOW);   
 
- 
 ///////////////////hijri print:
 
-if (salat2show!=6) { // print hijri most of time !
-    u8g2_for_adafruit_gfx.setForegroundColor(WHITE);  
-    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(dayNames[now.DayOfWeek()]), 137,dayNames[now.DayOfWeek()]);
-         len=u8g2_for_adafruit_gfx.getUTF8Width(dayNames[now.DayOfWeek()]) +10 ;
+if (salat2show!=5) { // this will print hijri most of time !
+//    u8g2_for_adafruit_gfx.setForegroundColor(WHITE);  
+//    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(dayNames[now.DayOfWeek()]), 32,dayNames[now.DayOfWeek()]);
+//         len=u8g2_for_adafruit_gfx.getUTF8Width(dayNames[now.DayOfWeek()]) +5 ;
     
     u8g2_for_adafruit_gfx.setForegroundColor(RED);    
     snprintf_P(tmp,countof(tmp),PSTR("%02u"),H_day);    
-    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(tmp)-len, 137,tmp);
-         len=len+u8g2_for_adafruit_gfx.getUTF8Width(tmp);   
-         
+    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(tmp)-3, 32,tmp);
+//        len=len+u8g2_for_adafruit_gfx.getUTF8Width(tmp);   
+          len=u8g2_for_adafruit_gfx.getUTF8Width(tmp)+10;           
+
     u8g2_for_adafruit_gfx.setForegroundColor(WHITE);  
-    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(HijriMonthNames[H_month]) -len, 137,HijriMonthNames[H_month]);
+    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(HijriMonthNames[H_month]) -len, 32,HijriMonthNames[H_month]);
          len=len+u8g2_for_adafruit_gfx.getUTF8Width(HijriMonthNames[H_month])+10 ;
 
     u8g2_for_adafruit_gfx.setForegroundColor(RED);    
     snprintf_P(tmp,countof(tmp),PSTR("%04u"),H_year);    
-    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(tmp)-len, 137,tmp);
-         len=len+u8g2_for_adafruit_gfx.getUTF8Width(tmp);  
+    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(tmp)-len, 32,tmp);
+         //len=len+u8g2_for_adafruit_gfx.getUTF8Width(tmp);  
 }
 else {
 /////////// geo print                 
     u8g2_for_adafruit_gfx.setForegroundColor(WHITE);  
-    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(dayNames[now.DayOfWeek()]), 137,dayNames[now.DayOfWeek()]);
-         len=u8g2_for_adafruit_gfx.getUTF8Width(dayNames[now.DayOfWeek()])+10 ;
+    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(dayNames[now.DayOfWeek()])-3, 32,dayNames[now.DayOfWeek()]);
+         len=u8g2_for_adafruit_gfx.getUTF8Width(dayNames[now.DayOfWeek()]) +10;
     
     u8g2_for_adafruit_gfx.setForegroundColor(RED);    
     snprintf_P(tmp,countof(tmp),PSTR("%02u"),now.Day());
-    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(tmp)-len , 137,tmp);
-         len=len+u8g2_for_adafruit_gfx.getUTF8Width(tmp);   
+    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(tmp)-len , 32,tmp);
+         len=len+u8g2_for_adafruit_gfx.getUTF8Width(tmp)+10;   
          
     u8g2_for_adafruit_gfx.setForegroundColor(WHITE);  
-     u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(GeoMonthNames[now.Month()])-len, 137,GeoMonthNames[now.Month()]);
-        len=len+u8g2_for_adafruit_gfx.getUTF8Width(GeoMonthNames[now.Month()]);     
+     u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(GeoMonthNames[now.Month()])-len, 32,GeoMonthNames[now.Month()]);
+        //len=len+u8g2_for_adafruit_gfx.getUTF8Width(GeoMonthNames[now.Month()]);     
 
-    u8g2_for_adafruit_gfx.setForegroundColor(RED);    
-    snprintf_P(tmp,countof(tmp),PSTR("%02u"),now.Year());
-    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(tmp)-len , 137,tmp);
+//    u8g2_for_adafruit_gfx.setForegroundColor(RED);    
+//    snprintf_P(tmp,countof(tmp),PSTR("%02u"),now.Year());
+//    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(tmp)-len , 32,tmp);
 }
 
 //////////////////////   print salat times
@@ -880,7 +976,7 @@ else {
   Printscrollup(salat_name_tab[salat2show],salat_times_list[salat2show]);
 
 
-  // if wifi is down, try reconnecting every 30 seconds
+  // if Wifi is down, try reconnecting every 30 seconds
   if (millis() > check_wifi) {
     if (WiFi.status() != WL_CONNECTED){
     Serial.println("Reconnecting to WiFi...");
@@ -895,8 +991,7 @@ if (G_Day!=now.Day()) ESP.restart(); //reboot every new day
 
 
 vga.show();     // make everything visible
-AsyncElegantOTA.loop();
-
+ 
 //Serial.print("time for 1 loop:") ;  
 //Serial.println(millis() - startMillis) ; //60
 }
