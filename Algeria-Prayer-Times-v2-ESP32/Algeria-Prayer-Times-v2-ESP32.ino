@@ -1,7 +1,8 @@
-// scrollup ok, and scroll right ok for short text, font ok, .
+//scrollup ok, font ok, .
 //to do: improve http server (index html is inspired from ESP32-CAM example. ) ,
 //to do: add hadith db
 #define RELAY 19
+#define uS_TO_Minute_FACTOR 60*1000000  /* Conversion factor for micro seconds to Minute */
   
 // CONNECTIONS:
 // DS1302 CLK/SCLK --> 5 
@@ -74,6 +75,10 @@ U8G2_FOR_ADAFRUIT_GFX u8g2_for_adafruit_gfx;
 //for scrollRight
 #define SCROLL_DELTA 2
 #define SCROLL_DELAY 0
+//char Hadith[]= "قال رسول الله صلى الله عليه وسلم خير الأعمال أدومها وإن قل" ;
+//char Hadith[]= "قال رسول الله صلى الله عليه وسلم: إذا دخل أحدُكم إلى المسجد فليُسَلِّم على النبي، وليقل: اللهم افتحْ لي أبوابَ رحمتك، وإذا خرج فليقل: اللهم إني أسألك من فضلك." ;
+//String Hadith_string=prReshaper123(Hadith); // to save reshaped utf8 hadith from sql
+//String Hadith_string = ".ﺖﻧﺃ ﻻﺇ ﺏﻮﻧﺬﻟﺍ ﺮﻔﻐﻳ ﻻ ﻪﻧﺈﻓ ،ﻲﻟ ﺮﻔﻏﺎﻓ ؛ﻲﺒﻧﺬﺑ ﻚﻟ ﺀﻮﺑﺃﻭ ،ﻲﻠﻋ ﻚﺘﻤﻌﻨﺑ ﻚﻟ ﺀﻮﺑﺃ ،ﺖﻌﻨﺻ ﺎﻣ ﺮﺷ ﻦﻣ ﻚﺑ ﺫﻮﻋﺃ ،ﺖﻌﻄﺘﺳﺍ ﺎﻣ ﻙﺪﻋﻭﻭ ﻙﺪﻬﻋ ﻰﻠﻋ ﺎﻧﺃﻭ ،ﻙﺪﺒﻋ ﺎﻧﺃﻭ ﻲﻨﺘﻘﻠﺧ ،ﺖﻧﺃ ﻻﺇ ﻪﻟﺇ ﻻ ﻲﺑﺭ ﺖﻧﺃ ﻢﻬﻠﻟﺍ :ﻝﻮﻘﺗ ﻥﺃ ﺭﺎﻔﻐﺘﺳﻻﺍ ﺪﻴﺳ :ﻝﺎﻗ ﻪﻧﺃ ﻢﻠﺳﻭ ﻪﻴﻠﻋ ﻪﻠﻟﺍ ﻰﻠﺻ ﻲﺒﻨﻟﺍ ﻦﻋ";
 
 String Hadith_string="" ;
 
@@ -81,7 +86,7 @@ String Hadith_string="" ;
 static const char* const salat_name_tab[6]={" ﺮﺠﻔﻟﺍ"," ﻕﻭﺮﺸﻟﺍ"," ﺮﻬﻈﻟﺍ" , " ﺮﺼﻌﻟﺍ" ," ﺏﺮﻐﻤﻟﺍ" ," ﺀﺎﺸﻌﻟﺍ" } ;
 char** salat_times_list ; //for printing2vga (04:15)
 
-static const char* const HijriMonthNames[13]={"الشهر0","ﻡﺮﺤﻣ","ﺮﻔﺻ" ,"ﻝﻭﻷﺍ ﻊﻴﺑﺭ" ,"ﻲﻧﺎﺜﻟﺍ ﻊﻴﺑﺭ","ﻝﻭﻷﺍ ﻯﺩﺎﻤﺟ","ﻲﻧﺎﺜﻟﺍ ﻯﺩﺎﻤﺟ","ﺐﺟﺭ","ﻥﺎﺒﻌﺷ","ﻥﺎﻀﻣﺭ","ﻝﺍﻮﺷ","ﺓﺪﻌﻘﻟﺍﻭﺫ","ﺔﺠﺤﻟﺍ ﻭﺫ" } ;
+static const char* const HijriMonthNames[13]={"الشهر0","ﻡﺮﺤﻤﻟﺍ","ﺮﻔﺻ" ,"ﻝﻭﻷﺍ ﻊﻴﺑﺭ" ,"ﻲﻧﺎﺜﻟﺍ ﻊﻴﺑﺭ","ﻝﻭﻷﺍ ﻯﺩﺎﻤﺟ","ﻲﻧﺎﺜﻟﺍ ﻯﺩﺎﻤﺟ","ﺐﺟﺭ","ﻥﺎﺒﻌﺷ","ﻥﺎﻀﻣﺭ","ﻝﺍﻮﺷ","ﺓﺪﻌﻘﻟﺍﻭﺫ","ﺔﺠﺤﻟﺍ ﻭﺫ" } ;
 static const char* const GeoMonthNames[13]={"الشهر0","ﻲﻔﻧﺎﺟ","ﻱﺮﻔﻴﻓ","ﺱﺭﺎﻣ","ﻞﻳﺮﻓﺃ","ﻱﺎﻣ","ﻥﺍﻮﺟ","ﺔﻴﻠﻳﻮﺟ","ﺕﻭﺃ","ﺮﺒﻤﺘﺒﺳ","ﺮﺑﻮﺘﻛﺃ","ﺮﺒﻤﻓﻮﻧ","ﺮﺒﻤﺴﻳﺩ"} ;
 static const char* const dayNames[7]={"ﺪﺣﻷﺍ","ﻦﻴﻨﺛﻹﺍ","ﺀﺎﺛﻼﺜﻟﺍ","ﺀﺎﻌﺑﺭﻷﺍ","ﺲﻴﻤﺨﻟﺍ","ﺔﻌﻤﺠﻟﺍ","ﺖﺒﺴﻟﺍ"} ;
 
@@ -371,10 +376,10 @@ Serial.print("Adan time: ");
 //Todo other cmd..
 
    unsigned long iqama_start_Millis=millis(); 
-   char tmpp[]= "ﻥﺍﺫﺃ ﺖﻗﻭ ﻥﺎﺣ" ;
+   char tmpp[100]= "ﻥﺍﺫﺃ ﺖﻗﻭ ﻥﺎﺣ" ;
    u8g2_for_adafruit_gfx.setFont(ae_Dimnah36);
    bool color=true;    
-while (millis() - iqama_start_Millis <60*1000){   
+while (millis() - iqama_start_Millis <12*1000){   
      if(color){
      vga.clear(WHITE) ;
      u8g2_for_adafruit_gfx.setFont(ae_Dimnah36);
@@ -393,9 +398,45 @@ while (millis() - iqama_start_Millis <60*1000){
      u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_CENTER(salat_name_tab[i]),130,salat_name_tab[i]);
      vga.show() ;
      color=!color;
-     delay(5000);
+     delay(3000);
 }
 
+//gfx.fillRect(0, 0,LCDWidth, 240, WHITE);
+
+
+u8g2_for_adafruit_gfx.setFont(watan);
+u8g2_for_adafruit_gfx.setBackgroundColor(BLACK);      
+u8g2_for_adafruit_gfx.setForegroundColor(GREEN);
+String hadithAthan;
+while (millis() - iqama_start_Millis <60*1000){   
+  gfx.fillRect(0, 0,LCDWidth, 240, BLACK);
+  
+  u8g2_for_adafruit_gfx.setForegroundColor(RED); 
+  
+  hadithAthan = "ﻪﻠﻟﺍ ﻰﻠﺻ ﻪﻠﻟﺍ ﻝﻮﺳﺭ ﻝﺎﻗ" ;
+    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_CENTER(hadithAthan.c_str() ),32,hadithAthan.c_str() );
+  hadithAthan = " :ﻢﻠﺳﻭ ﻪﻴﻠﻋ" ;
+    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(hadithAthan.c_str()) -30 ,82,hadithAthan.c_str() );
+
+  u8g2_for_adafruit_gfx.setForegroundColor(GREEN);
+  hadithAthan = "ﻢﺘﻌﻤﺳ ﺍﺫﺇ" ;
+    u8g2_for_adafruit_gfx.drawUTF8(20 ,82,hadithAthan.c_str() );
+ 
+  hadithAthan = "ﻝﻮﻘﻳ ﺎﻤﻛ ﺍﻮﻟﻮﻘﻓ ،ﺀﺍﺪﻨﻟﺍ " ;
+    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_CENTER(hadithAthan.c_str() ),132,hadithAthan.c_str() );
+  hadithAthan = ".ﻥﺫﺆﻤﻟﺍ"  ;
+    u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_RIGHT(hadithAthan.c_str()) -40,182,hadithAthan.c_str() );
+
+  u8g2_for_adafruit_gfx.setForegroundColor(WHITE);
+  hadithAthan = "ﻪﻴﻠﻋ ﻖﻔﺘﻣ"  ;
+    u8g2_for_adafruit_gfx.drawUTF8(10,182,hadithAthan.c_str() );
+    
+  vga.show() ;
+  delay(1000);
+}
+
+
+     
 }
 
 void setup(){
@@ -721,9 +762,10 @@ sqlite3_finalize(res);
 } 
 
 
-
+int16_t nowMinutes;
 short dv=1;
 short wait=50;
+
 void Printscrollup(const char* salat_name,const char* times){
      u8g2_for_adafruit_gfx.setFont(ae_Dimnah36);
      vga.fillRect(0,150,LCDWidth, 50,vga.RGB(0,0,0));
@@ -741,19 +783,46 @@ void Printscrollup(const char* salat_name,const char* times){
      salat_top_offset[salat2show] -= dv;  
   }
   else      { 
-      if(wait>0) wait-=1 ; // ثبات
+      if(wait>0) wait-=1 ; // انتظار وثبات الكلمة في الشاشة
       else{ // بداية النزول
-        wait=50 ; // للعرض القادم
         dv=-4 ; // يصبح التغير في العرض الى الاسفل
-        salat_top_offset[salat2show] -= dv; // مكان العرض التالي تحدث مرة واحدة
+        salat_top_offset[salat2show] -= dv; // مكان العرض التالي
         }   
     }
 
   if(salat_top_offset[salat2show]>250 ) { //outside of screen
     dv=2 ;
     salat_top_offset[salat2show]= 200 ; //fot the next show
-    if (salat2show==5) salat2show=0;  //if ishaa show fajr
+    if (salat2show==5) salat2show=0;  //if ishaa, show fajr
     else salat2show=salat2show+1;
+
+        short nextSalat_int ;
+        if ((FajrMinutes - nowMinutes) >= 0) {
+           nextSalat_int= 0 ;
+        }
+        else if ((ShurooqMinutes - nowMinutes) >= 0) {
+           nextSalat_int= 1 ;
+        }
+        else if ((DhuhrMinutes - nowMinutes) >= 0) {
+           nextSalat_int= 2 ;
+        }
+        else if ((AsrMinutes - nowMinutes) >= 0) {
+           nextSalat_int= 3 ;
+        }
+        else if ((MaghribMinutes - nowMinutes) >= 0) {
+           nextSalat_int= 4 ;
+        }
+        else if ((IshaMinutes - nowMinutes) >= 0) {
+           nextSalat_int= 5 ;
+        }
+        else if ((IshaMinutes - nowMinutes) < 0) {
+           nextSalat_int= 0 ;
+        }
+        
+        if (nextSalat_int==salat2show ) wait=255 ; //تأخير أكبر من الصلوات الأخرى
+        else wait=50 ; // للعرض القادم
+        
+        
   }
 
 }
@@ -840,6 +909,9 @@ void printHadith() {
     u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_CENTER(hadith_tmp2.c_str()),130,hadith_tmp2.c_str()); //second line
 }
 
+bool go2sleep=0;
+uint32_t sleep_for=0;
+
 void loop() {
 //startMillis = millis();
     
@@ -888,6 +960,9 @@ printClock(); //clock 09:00:00
 //}
 //else if ((ShurooqMinutes - nowMinutes) >= 0) {
 //    nextSalatMinutes= ShurooqMinutes- nowMinutes ;
+//}
+//else if ((DhuhrMinutes - nowMinutes) >= 0) {
+//   nextSalatMinutes= DhuhrMinutes- nowMinutes ;
 //}
 //else if ((AsrMinutes - nowMinutes) >= 0) {
 //    nextSalatMinutes= AsrMinutes- nowMinutes ;
@@ -986,12 +1061,53 @@ else {
   }
   }
   
-
-if (G_Day!=now.Day()) ESP.restart(); //reboot every new day
-
-
 vga.show();     // make everything visible
  
 //Serial.print("time for 1 loop:") ;  
 //Serial.println(millis() - startMillis) ; //60
+
+//if (G_Day!=now.Day()) ESP.restart(); //reboot every new day
+
+
+        /*
+        we configure the wake up source
+        We set our ESP32 to sleep after 45 from Isha, and wake up before 60 minutes from Fajr
+        */
+        nowMinutes=now.Hour()*60+now.Minute() ;      
+        
+        if ((nowMinutes -IshaMinutes) > 45) {
+          sleep_for =  (24*60-nowMinutes) + FajrMinutes - 60   ;
+          esp_sleep_enable_timer_wakeup( sleep_for * uS_TO_Minute_FACTOR);
+          go2sleep=1;    
+          }
+                
+            else if ((nowMinutes+60 -FajrMinutes) < 0) {
+              sleep_for = FajrMinutes - nowMinutes -60 ;
+              esp_sleep_enable_timer_wakeup(sleep_for * uS_TO_Minute_FACTOR);
+              go2sleep=1;    
+            }  
+                  else if ((nowMinutes - ShurooqMinutes) > 45) { //فات الشروق
+                          if ((nowMinutes - (DhuhrMinutes-60) ) < 0) {  // لم يحن وقت الظهر
+                            sleep_for = (DhuhrMinutes -60 - nowMinutes) ;
+                            esp_sleep_enable_timer_wakeup(sleep_for * uS_TO_Minute_FACTOR);
+                            go2sleep=1;   
+                          } 
+                  }
+                 
+          if (go2sleep){
+          Serial.println("Going to sleep now for:" + String(sleep_for) + "Minutes");
+          vga.clear(WHITE) ;
+          u8g2_for_adafruit_gfx.setFont(ae_Dimnah24);
+          u8g2_for_adafruit_gfx.setBackgroundColor(WHITE);
+          u8g2_for_adafruit_gfx.setForegroundColor(BLACK);  
+          String tmpp= "ﺔﻗﺎﻄﻟﺍ ﺮﻴﻓﻮﺗ ﻊﺿﻭ" ;
+          u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_CENTER(tmpp.c_str()),50,tmpp.c_str());
+          tmpp= "ﺕﺎﻋﺎﺳ " + String(sleep_for / 60) +  " ﺓﺪﻤﻟ ﺕﺎﺒﺳ";
+          u8g2_for_adafruit_gfx.drawUTF8(ALIGNE_CENTER(tmpp.c_str()),130,tmpp.c_str());
+          vga.show();     // make everything visible        
+          delay(15000);
+          Serial.flush(); 
+          esp_deep_sleep_start();
+          Serial.println("This will never be printed");    
+          }
 }
